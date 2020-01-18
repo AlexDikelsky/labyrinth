@@ -24,14 +24,12 @@ fn main() {
     //println!("{:?}", s.1);
     x[0][0] = Terrain::Theseus;
     let s = x.clone();
-    as_maze(get_around(0, 0, x, 4, 3));
-    as_maze(get_around(0, 0, s, 2, 2));
+    as_maze(get_around(0, 0, s, 4, 3));
+    as_maze(get_around(15, 15, x, 2, 2));
 }
 
 //  Can't use constant x_sights because when you enter the center of the
 //  maze, your vision increases.
-//const X_SIGHT: usize = 16;
-//const Y_SIGHT: usize = 16;
 
 //const WALL_CHAR: char = 'X';
 //const OPEN_CHAR: char = '.';
@@ -163,13 +161,16 @@ fn get_around(x_location: usize, y_location: usize, terr_maze: Vec<Vec<Terrain>>
             //println!("y calc = {}", (y_location as i32) + (y as i32) - (y_sight as i32));
             //println!("x ch = {}, y ch = {}", (x_location+x).checked_sub(x_sight) != None, ((y_location+y).checked_sub(y_sight) != None));
 
+            //println!("x upper =  {}, len={}", x_location + x - x_sight, terr_maze.len());
+            //println!("y upper =  {}, len={}", y_location + y - y_sight, terr_maze.len());
+            //println!();
             if 
                 ((x_location+x).checked_sub(x_sight) != None) && ((y_location+y).checked_sub(y_sight) != None) &&
-                ( x_location + x + x_sight < terr_maze.len()) &&  
-                  y_location + y + y_sight < terr_maze[y].len() 
+                ( x_location + x - x_sight < terr_maze.len()) &&  
+                  y_location + y - y_sight < terr_maze[y].len() 
                 {
                     result[x][y] = terr_maze[x_location + x - x_sight][y_location + y - y_sight];
-                    println!("{}, {}", x_location + x - x_sight, y_location + y - y_sight);
+                    //println!("{}, {}", x_location + x - x_sight, y_location + y - y_sight);
             }
         }
     }
