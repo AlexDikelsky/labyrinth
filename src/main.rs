@@ -11,29 +11,41 @@ fn main() {
     let maze_raw = fs::read_to_string(filename)
         .expect("unable to read file");
 
-    let s = fs::read_to_string(filename).expect("dsf");
-    
-    let mut x = parse_string_maze(s);
+    let mut x = parse_string_maze(maze_raw);
     println!();
+    let d = x.clone();
+    as_maze(d);
+    println!();
+
+    //Down works
+    as_maze(move_character(Terrain::Theseus, Direction::Left, 
+    move_character(Terrain::Theseus, Direction::Left,
+        (move_character(Terrain::Theseus, Direction::Up, x))
+        )));
     //let mut x = get_around(7, 7, parse_string_maze(maze_raw));
     //let s = find_terr(x, Terrain::Theseus);
     //let x = s.0;
     //let a = (s.1).0;
     //let b = (s.1).1;
 
-    //println!("{:?}", s.1);
-    x[0][0] = Terrain::Theseus;
-    let s = x.clone();
-    as_maze(get_around(0, 0, s, 4, 3));
-    as_maze(get_around(15, 15, x, 2, 2));
+    //let s = x.clone();
+    //let t = x.clone();
+    //as_maze(get_around(a, b, x, 1, 5));
+    //as_maze(get_around(0, 0, s, 4, 3));
+    //as_maze(get_around(15, 15, x, 2, 2));
+    //
+    //  This one still crashes ↓
+    //  Probably has something to do with 7 being a "high" number
+    //as_maze(get_around(12, 12, t, 0, 7));
 }
 
+//{{{Notes
 //  Can't use constant x_sights because when you enter the center of the
 //  maze, your vision increases.
 
 //const WALL_CHAR: char = 'X';
 //const OPEN_CHAR: char = '.';
-
+//}}}
 //{{{Terrain 
 #[derive(Clone, Copy, PartialEq)]
 enum Terrain {
@@ -71,57 +83,68 @@ fn find_terr(maze_vec: Vec<Vec<Terrain>>, to_search: Terrain) -> (Vec<Vec<Terrai
 enum Direction {
     Up,
     Right,
+    Down,
+    Left,
 }
-fn motion(d: &Direction) -> [usize; 2] { 
-    //I think const 2 in the declaration is fine here because I think I won't need another dimension
+fn motion(d: &Direction) -> ([usize; 2], char) { 
+    //I think using arrays here is fine because only 2 dimentions will be needed
+    //I have 'f' and 'b' to show which direction they are going because STEP_LEN
+    //has to be a usize.
     match d {
-        Direction::Up    => [0,STEP_LEN],
-        Direction::Right => [STEP_LEN,0],
-        //Not including these, since in a sense they are special cases of Up and Right
-        //  I also don't want to have to store this stuff as signed integers unless needed
-        //Down  => [0,-STEP_LEN],
-        //Left  => [-STEP_LEN,0],
+        Direction::Right => ([0,STEP_LEN],  '+'),
+        Direction::Down  => ([STEP_LEN, 0],  '+'),
+
+        Direction::Up    => ([STEP_LEN,0],  '-'),
+        Direction::Left  => ([0, STEP_LEN],  '-'),
     }
 }
 //}}}
-////{{{
-//fn move_character(t: Terrain, d: Direction, for_or_back: bool, mut maze_vec: Vec<Vec<Terrain>>) -> Vec<Vec<Terrain>> {
-//    let points = motion(&d);
-//    let value = find_terr(maze_vec, t);
-//    let mut maze_vec = value.0;
-//    let x = (value.1).0;
-//    let y = (value.1).1;
-//
-//    println!("{}, {}, {}, {}, {}", 
-//             x + points[0] > 0 ,
-//             x + points[0] < maze_vec.len() ,
-//             y + points[1] > 0 ,
-//             y + points[1] < maze_vec[0].len() ,
-//             maze_vec[x + points[0]][y + points[1]] != Terrain::Wall  
-//             );
-//
-//    if for_or_back {
-//        if x + points[0] > 0 && x + points[0] < maze_vec.len() &&
-//           y + points[1] > 0 && y + points[1] < maze_vec[0].len() &&
-//           maze_vec[x + points[0]][y + points[1]] != Terrain::Wall {
-//            maze_vec[x + points[0]][y + points[1]] = t;
-//            maze_vec[x][y] = Terrain::Open;
-//    }
-//    else {
-//        if x.checked_sub(points[0]) != None && x - points[0] < maze_vec.len() &&
-//           y.checked_sub(points[1]) != None && y - points[1] < maze_vec[0].len() &&
-//           maze_vec[x - points[0]][y - points[1]] != Terrain::Wall {
-//            maze_vec[x - points[0]][y - points[1]] = t;
-//            maze_vec[x][y] = Terrain::Open;
-//           }
-//        }
-//    }
-//    return maze_vec
-//}
-////}}}
+//{{{
+fn move_character(t: Terrain, d: Direction, mut maze_vec: Vec<Vec<Terrain>>) -> Vec<Vec<Terrain>> {
+    let location = motion(&d);
+    let value = find_terr(maze_vec, t);
+    let mut maze_vec = value.0;
+    let points = [(location.0)[0], (location.0)[1]];
+    let x = (value.1).0;
+    let y = (value.1).1;
 
-//fn move_char(x_start, y_start, direction)
+    let destination = {
+            if location.1 == '-' {
+                [x - points[0], y - points[1]]
+            } else {
+                [x + points[0], y + points[1]]
+            }
+    };
 
+    //println!("{}, {}, {}, {}, {}", 
+    //         x + points[0] > 0 ,
+    //         x + points[0] < maze_vec.len() ,
+    //         y + points[1] > 0 ,
+    //         y + points[1] < maze_vec[0].len() ,
+    //         maze_vec[x + points[0]][y + points[1]] != Terrain::Wall  
+    //         );
+
+    //maze_vec[x + points[0]][y + points[1]] = t;
+    //maze_vec[x - points[0]][y + points[1]] = t;
+
+    println!("{:?}", destination);
+
+    if destination[0] > 0 && 
+        destination[0] < maze_vec.len() &&
+        destination[1] > 0 &&
+        destination[1] < maze_vec[0].len() &&
+        maze_vec[destination[0]][destination[1]] == Terrain::Open
+        {
+            println!("s1df");
+            let swap = maze_vec[destination[0]][destination[1]];
+            maze_vec[destination[0]][destination[1]] = t;
+            println!("sdf");
+
+            maze_vec[x][y] = swap;
+        }
+    return maze_vec
+}
+//}}}
 //{{{Maze generation
 fn parse_string_maze(maze_raw: String) -> Vec<Vec<Terrain>> {
     let mut vec_maze: Vec<Vec<Terrain>> = vec![vec![]];
