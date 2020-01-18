@@ -2,10 +2,19 @@ extern crate termion;
 
 use std::io;
 use std::fs;
+//{{{Notes
+//  Can't use constant x_sights because when you enter the center of the
+//  maze, your vision increases.
+
+//const WALL_CHAR: char = 'X';
+//const OPEN_CHAR: char = '.';
+//}}}
 
 const STEP_LEN: usize = 1;
 
+//{{{Main
 fn main() {
+    //This reads in the maze file
     let filename = "testmaze.txt";
 
     let maze_raw = fs::read_to_string(filename)
@@ -13,14 +22,15 @@ fn main() {
 
     let mut x = parse_string_maze(maze_raw);
 
+    //Prepares the maze
     let mino_tup = find_terr(x, Terrain::Minotaur);
     let mut current_maze = mino_tup.0;
     let mino_loc = mino_tup.1;
     let mut found = false;
     
+    //Run the maze
     while !found {
-        
-        let direction = get_direction();
+        let direction = read_direction();
 
         println!("Direction = {:?}", match direction { 
             Direction::Up => "Up", 
@@ -28,6 +38,7 @@ fn main() {
             Direction::Right => "Right",
             Direction::Left => "Left",
         });
+
         current_maze = move_character(Terrain::Theseus, direction, current_maze);
         let thes_loc = find_terr(current_maze.clone(), Terrain::Theseus).1;
         as_maze(get_around(thes_loc.0, thes_loc.1, current_maze.clone(), 2, 2));
@@ -57,15 +68,6 @@ fn main() {
     //as_maze(get_around(12, 12, t, 0, 7));
     //}}}
 }
-
-
-
-//{{{Notes
-//  Can't use constant x_sights because when you enter the center of the
-//  maze, your vision increases.
-
-//const WALL_CHAR: char = 'X';
-//const OPEN_CHAR: char = '.';
 //}}}
 //{{{Terrain 
 #[derive(Clone, Copy, PartialEq)]
@@ -82,6 +84,7 @@ fn get_terr_char(t: &Terrain) -> char {
         Terrain::Open => '.',
         Terrain::Theseus => '$',
         Terrain::Minotaur => '?',
+        Terrain::Sword => '%',
     }
 }
 
@@ -122,49 +125,47 @@ fn motion(d: &Direction) -> ([usize; 2], char) {
 }
 //}}}
 //{{{ Movement
-fn move_character(t: Terrain, d: Direction, mut maze_vec: Vec<Vec<Terrain>>) -> Vec<Vec<Terrain>> {
+fn move_character(t: Terrain, d: Direction, maze_vec: Vec<Vec<Terrain>>) -> Vec<Vec<Terrain>> {
     let location = motion(&d);
     let value = find_terr(maze_vec, t);
     let mut maze_vec = value.0;
     let points = [(location.0)[0], (location.0)[1]];
     let x = (value.1).0;
     let y = (value.1).1;
+    //println!("In Move_char");
+        
+        if (x.checked_sub(points[0]) != None && y.checked_sub(points[1]) != None) || location.1 == '+' {
+            let destination = {
+                    if location.1 == '-' {
+                        [x - points[0], y - points[1]]
+                    } else {
+                        [x + points[0], y + points[1]]
+                    }
+            };
 
-    let destination = {
-            if location.1 == '-' {
-                [x - points[0], y - points[1]]
-            } else {
-                [x + points[0], y + points[1]]
-            }
-    };
+            //println!("{}, {}, {}, {}, {}", 
+            //         x + points[0] > 0 ,
+            //         x + points[0] < maze_vec.len() ,
+            //         y + points[1] > 0 ,
+            //         y + points[1] < maze_vec[0].len() ,
+            //         maze_vec[x + points[0]][y + points[1]] != Terrain::Wall  
+            //         );
 
-    //println!("{}, {}, {}, {}, {}", 
-    //         x + points[0] > 0 ,
-    //         x + points[0] < maze_vec.len() ,
-    //         y + points[1] > 0 ,
-    //         y + points[1] < maze_vec[0].len() ,
-    //         maze_vec[x + points[0]][y + points[1]] != Terrain::Wall  
-    //         );
+            //maze_vec[x + points[0]][y + points[1]] = t;
+            //maze_vec[x - points[0]][y + points[1]] = t;
 
-    //maze_vec[x + points[0]][y + points[1]] = t;
-    //maze_vec[x - points[0]][y + points[1]] = t;
+            println!("dest = {:?}", destination);
+            println!("loc  = {:?}", (x, y));
 
-    println!("dest = {:?}", destination);
-    println!("loc  = {:?}", (x, y));
-
-    if destination[0] >= 0 && 
-        destination[0] < maze_vec.len() &&
-        destination[1] >= 0 &&
-        destination[1] < maze_vec[0].len() &&
-        maze_vec[destination[0]][destination[1]] == Terrain::Open
-        {
-            println!("s1df");
-            let swap = maze_vec[destination[0]][destination[1]];
-            maze_vec[destination[0]][destination[1]] = t;
-            println!("sdf");
-
-            maze_vec[x][y] = swap;
+            if destination[0] < maze_vec.len() &&
+                destination[1] < maze_vec[0].len() &&
+                maze_vec[destination[0]][destination[1]] == Terrain::Open
+                {
+                    let swap = maze_vec[destination[0]][destination[1]];
+                    maze_vec[destination[0]][destination[1]] = t;
+                    maze_vec[x][y] = swap;
         }
+    }
     return maze_vec
 }
 //}}}
@@ -190,23 +191,20 @@ fn parse_string_maze(maze_raw: String) -> Vec<Vec<Terrain>> {
     vec_maze.pop(); //This removes the empty list at the end
     return vec_maze
 }
-fn get_direction() -> Direction {
-    let mut valid_direction = false;
-    while !valid_direction {
+fn read_direction() -> Direction {
+    loop {
         let mut guess = String::new();
         io::stdin().read_line(&mut guess)
             .expect("Failed to read line");
 
-        let mut direction = Direction::Up;
-        direction = match guess.chars().next().unwrap() {
-            'u' => {valid_direction = true; return Direction::Up},
-            'd' => {valid_direction = true; return Direction::Down},
-            'l' => {valid_direction = true; return Direction::Left},
-            'r' => {valid_direction = true; return Direction::Right},
-            _   => {println!("Please enter \n`u' for up,\n`d' for down,\n`l' for left,\n`r' for right"); Direction::Up},
+        match guess.chars().next().unwrap() {
+            'u' => {return Direction::Up},
+            'd' => {return Direction::Down},
+            'l' => {return Direction::Left},
+            'r' => {return Direction::Right},
+            _   => {println!("Please enter \n`u' for up,\n`d' for down,\n`l' for left,\n`r' for right");},
         }
     }
-    panic!("Got out of get_direction while loop without returning");
 }
 //}}}
 //{{{Output
