@@ -1,6 +1,6 @@
 extern crate termion;
 
-//use std::io;
+use std::io;
 use std::fs;
 
 const STEP_LEN: usize = 1;
@@ -12,16 +12,34 @@ fn main() {
         .expect("unable to read file");
 
     let mut x = parse_string_maze(maze_raw);
-    println!();
-    let d = x.clone();
-    as_maze(d);
-    println!();
 
+    let mino_tup = find_terr(x, Terrain::Minotaur);
+    let mut current_maze = mino_tup.0;
+    let mino_loc = mino_tup.1;
+    let mut found = false;
+    
+    while !found {
+        
+        let direction = get_direction();
+
+        println!("Direction = {:?}", match direction { 
+            Direction::Up => "Up", 
+            Direction::Down => "Down", 
+            Direction::Right => "Right",
+            Direction::Left => "Left",
+        });
+        current_maze = move_character(Terrain::Theseus, direction, current_maze);
+        let thes_loc = find_terr(current_maze.clone(), Terrain::Theseus).1;
+        as_maze(get_around(thes_loc.0, thes_loc.1, current_maze.clone(), 2, 2));
+    }
+
+    //{{{ Old tests
     //Down works
-    as_maze(move_character(Terrain::Theseus, Direction::Left, 
-    move_character(Terrain::Theseus, Direction::Left,
-        (move_character(Terrain::Theseus, Direction::Up, x))
-        )));
+    //as_maze(move_character(Terrain::Theseus, Direction::Left, 
+    //move_character(Terrain::Theseus, Direction::Left,
+    //    (move_character(Terrain::Theseus, Direction::Up, x))
+    //    )));
+
     //let mut x = get_around(7, 7, parse_string_maze(maze_raw));
     //let s = find_terr(x, Terrain::Theseus);
     //let x = s.0;
@@ -37,7 +55,10 @@ fn main() {
     //  This one still crashes ↓
     //  Probably has something to do with 7 being a "high" number
     //as_maze(get_around(12, 12, t, 0, 7));
+    //}}}
 }
+
+
 
 //{{{Notes
 //  Can't use constant x_sights because when you enter the center of the
@@ -80,6 +101,7 @@ fn find_terr(maze_vec: Vec<Vec<Terrain>>, to_search: Terrain) -> (Vec<Vec<Terrai
 }
 //}}}
 //{{{ Direction
+#[derive(Clone, Copy)]
 enum Direction {
     Up,
     Right,
@@ -99,7 +121,7 @@ fn motion(d: &Direction) -> ([usize; 2], char) {
     }
 }
 //}}}
-//{{{
+//{{{ Movement
 fn move_character(t: Terrain, d: Direction, mut maze_vec: Vec<Vec<Terrain>>) -> Vec<Vec<Terrain>> {
     let location = motion(&d);
     let value = find_terr(maze_vec, t);
@@ -127,11 +149,12 @@ fn move_character(t: Terrain, d: Direction, mut maze_vec: Vec<Vec<Terrain>>) -> 
     //maze_vec[x + points[0]][y + points[1]] = t;
     //maze_vec[x - points[0]][y + points[1]] = t;
 
-    println!("{:?}", destination);
+    println!("dest = {:?}", destination);
+    println!("loc  = {:?}", (x, y));
 
-    if destination[0] > 0 && 
+    if destination[0] >= 0 && 
         destination[0] < maze_vec.len() &&
-        destination[1] > 0 &&
+        destination[1] >= 0 &&
         destination[1] < maze_vec[0].len() &&
         maze_vec[destination[0]][destination[1]] == Terrain::Open
         {
@@ -145,7 +168,7 @@ fn move_character(t: Terrain, d: Direction, mut maze_vec: Vec<Vec<Terrain>>) -> 
     return maze_vec
 }
 //}}}
-//{{{Maze generation
+//{{{Input
 fn parse_string_maze(maze_raw: String) -> Vec<Vec<Terrain>> {
     let mut vec_maze: Vec<Vec<Terrain>> = vec![vec![]];
     let mut row = 0;
@@ -166,6 +189,24 @@ fn parse_string_maze(maze_raw: String) -> Vec<Vec<Terrain>> {
     }
     vec_maze.pop(); //This removes the empty list at the end
     return vec_maze
+}
+fn get_direction() -> Direction {
+    let mut valid_direction = false;
+    while !valid_direction {
+        let mut guess = String::new();
+        io::stdin().read_line(&mut guess)
+            .expect("Failed to read line");
+
+        let mut direction = Direction::Up;
+        direction = match guess.chars().next().unwrap() {
+            'u' => {valid_direction = true; return Direction::Up},
+            'd' => {valid_direction = true; return Direction::Down},
+            'l' => {valid_direction = true; return Direction::Left},
+            'r' => {valid_direction = true; return Direction::Right},
+            _   => {println!("Please enter \n`u' for up,\n`d' for down,\n`l' for left,\n`r' for right"); Direction::Up},
+        }
+    }
+    panic!("Got out of get_direction while loop without returning");
 }
 //}}}
 //{{{Output
