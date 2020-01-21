@@ -30,18 +30,18 @@ fn main() {
     
     //Run the maze
     while !found {
-        let action = read_action();
+        let direction = read_action();
 
-        println!("action = {:?}", match action.1 { 
-            Action::Up => "Up", 
-            Action::Down => "Down", 
-            Action::Right => "Right",
-            Action::Left => "Left",
+        println!("direction = {:?}", match direction.1 { 
+            Direction::Up => "Up", 
+            Direction::Down => "Down", 
+            Direction::Right => "Right",
+            Direction::Left => "Left",
         });
 
-        current_maze = match action.0 {
-            true  => stab(action.1, current_maze),
-            false => move_character(Terrain::Theseus, action.1, current_maze, vec![Terrain::Open]),
+        current_maze = match direction.0 {
+            true  => move_character(Terrain::Theseus, direction.1, current_maze, vec![Terrain::Open]),
+            false => move_character(Terrain::Theseus, direction.1, current_maze, vec![Terrain::Open]),
         };
         let thes_loc = find_terr(current_maze.clone(), Terrain::Theseus).1;
         as_maze(get_around(thes_loc.0, thes_loc.1, current_maze.clone(), 2, 2));
@@ -109,37 +109,37 @@ fn find_terr(maze_vec: Vec<Vec<Terrain>>, to_search: Terrain) -> (Vec<Vec<Terrai
 //}}}
 //{{{ Direction
 #[derive(Clone, Copy, PartialEq)]
-enum Action {
+enum Direction {
     Up,
     Right,
     Down,
     Left,
 }
-fn motion(d: &Action) -> ([usize; 2], char) { 
+fn motion(d: &Direction) -> ([usize; 2], char) { 
     //I think using arrays here is fine because only 2 dimentions will be needed
     //I have 'f' and 'b' to show which direction they are going because STEP_LEN
     //has to be a usize.
     match d {
-        Action::Right => ([0,STEP_LEN],  '+'),
-        Action::Down  => ([STEP_LEN, 0],  '+'),
+        Direction::Right => ([0,STEP_LEN],  '+'),
+        Direction::Down  => ([STEP_LEN, 0],  '+'),
 
-        Action::Up    => ([STEP_LEN,0],  '-'),
-        Action::Left  => ([0, STEP_LEN],  '-'),
+        Direction::Up    => ([STEP_LEN,0],  '-'),
+        Direction::Left  => ([0, STEP_LEN],  '-'),
     }
 }
 //}}}
 //{{{ Sword
-fn stab(d: Action, maze: Vec<Vec<Terrain>>) -> Vec<Vec<Terrain>> {
-    let thes_loc = find_terr(maze.clone(), Terrain::Theseus).1;
-    if move_character(Terrain::Theseus, d, maze.clone(), vec![Terrain::Open, Terrain::Minotaur]) == maze.clone() {
-        if find_terr(maze.clone(), Terrain::Theseus)
-
-
-
-}
+//fn stab(d: Direction, maze: Vec<Vec<Terrain>>) -> Vec<Vec<Terrain>> {
+//    let thes_loc = find_terr(maze.clone(), Terrain::Theseus).1;
+//    if move_character(Terrain::Theseus, d, maze.clone(), vec![Terrain::Open, Terrain::Minotaur]) == maze.clone() {
+//        if find_terr(maze.clone(), Terrain::Theseus)
+//
+//
+//
+//}
 //}}}
 //{{{ Movement
-fn move_character(t: Terrain, d: Action, maze_vec: Vec<Vec<Terrain>>, legal_terrains: Vec<Terrain>) -> Vec<Vec<Terrain>> {
+fn move_character(t: Terrain, d: Direction, maze_vec: Vec<Vec<Terrain>>, legal_terrains: Vec<Terrain>) -> Vec<Vec<Terrain>> {
     let location = motion(&d);
     let value = find_terr(maze_vec, t);
     let mut maze_vec = value.0;
@@ -168,12 +168,13 @@ fn move_character(t: Terrain, d: Action, maze_vec: Vec<Vec<Terrain>>, legal_terr
             //maze_vec[x + points[0]][y + points[1]] = t;
             //maze_vec[x - points[0]][y + points[1]] = t;
 
-            println!("dest = {:?}", destination);
-            println!("loc  = {:?}", (x, y));
+            //println!("dest = {:?}", destination);
+            //println!("loc  = {:?}", (x, y));
+            println!("{}[2J", 27 as char);
 
             if destination[0] < maze_vec.len() &&
                 destination[1] < maze_vec[0].len() &&
-                maze_vec.clone().contains(&maze_vec[destination[0]][destination[1]])
+                legal_terrains.clone().contains(&maze_vec[destination[0]][destination[1]])
                 {
                     let swap = maze_vec[destination[0]][destination[1]];
                     maze_vec[destination[0]][destination[1]] = t;
@@ -205,17 +206,17 @@ fn parse_string_maze(maze_raw: String) -> Vec<Vec<Terrain>> {
     vec_maze.pop(); //This removes the empty list at the end
     return vec_maze
 }
-fn read_action() -> (bool, Action) {
+fn read_action() -> (bool, Direction) {
     loop {
         let mut guess = String::new();
         io::stdin().read_line(&mut guess)
             .expect("Failed to read line");
 
         match guess.chars().next().unwrap() {
-            'u' => {return (false, Action::Up)},
-            'd' => {return (false, Action::Down)},
-            'l' => {return (false, Action::Left)},
-            'r' => {return (false, Action::Right)},
+            'u' => {return (false, Direction::Up)},
+            'd' => {return (false, Direction::Down)},
+            'l' => {return (false, Direction::Left)},
+            'r' => {return (false, Direction::Right)},
             's' => {
                 println!("Choose a direction to attack:"); 
                 return (true, read_action().1)
