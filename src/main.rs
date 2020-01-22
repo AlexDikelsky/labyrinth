@@ -20,56 +20,42 @@ fn main() {
     let maze_raw = fs::read_to_string(filename)
         .expect("unable to read file");
 
-    let mut x = parse_string_maze(maze_raw);
+    let mut current_maze = parse_string_maze(maze_raw);
 
     //Prepares the maze
-    let mino_tup = find_terr(x, Terrain::Minotaur);
-    let mut current_maze = mino_tup.0;
-    let mino_loc = mino_tup.1;
     let mut found = false;
+    let mut theseus = Character {
+        loc           : find_terr(current_maze.clone(), Terrain::Theseus),
+        legal_terrain : vec![Terrain::Open],
+        terr          : Terrain::Theseus,
+        shape         : '$',
+    };
     
     //Run the maze
     while !found {
-        let direction = read_action();
+        let action = read_action();
 
-        println!("direction = {:?}", match direction.1 { 
+        println!("direction = {:?}", match action.1 { 
             Direction::Up => "Up", 
             Direction::Down => "Down", 
             Direction::Right => "Right",
             Direction::Left => "Left",
         });
 
-        current_maze = match direction.0 {
-            true  => move_character(Terrain::Theseus, direction.1, current_maze, vec![Terrain::Open]),
-            false => move_character(Terrain::Theseus, direction.1, current_maze, vec![Terrain::Open]),
+        let mut current_maze = match action.0 {
+            true  => move_character(action.1, &mut current_maze, &mut theseus),
+            false => move_character(action.1, &mut current_maze, &mut theseus),
         };
-        let thes_loc = find_terr(current_maze.clone(), Terrain::Theseus).1;
-        as_maze(get_around(thes_loc.0, thes_loc.1, current_maze.clone(), 2, 2));
+        as_maze(get_around(theseus.loc.0, theseus.loc.1, current_maze.clone(), 2, 2));
     }
-
-    //{{{ Old tests
-    //Down works
-    //as_maze(move_character(Terrain::Theseus, Direction::Left, 
-    //move_character(Terrain::Theseus, Direction::Left,
-    //    (move_character(Terrain::Theseus, Direction::Up, x))
-    //    )));
-
-    //let mut x = get_around(7, 7, parse_string_maze(maze_raw));
-    //let s = find_terr(x, Terrain::Theseus);
-    //let x = s.0;
-    //let a = (s.1).0;
-    //let b = (s.1).1;
-
-    //let s = x.clone();
-    //let t = x.clone();
-    //as_maze(get_around(a, b, x, 1, 5));
-    //as_maze(get_around(0, 0, s, 4, 3));
-    //as_maze(get_around(15, 15, x, 2, 2));
-    //
-    //  This one still crashes ↓
-    //  Probably has something to do with 7 being a "high" number
-    //as_maze(get_around(12, 12, t, 0, 7));
-    //}}}
+}
+//}}}
+//{{{Character
+struct Character {
+    loc: (usize, usize),
+    legal_terrain: Vec<Terrain>,
+    terr: Terrain,
+    shape: char,
 }
 //}}}
 //{{{Terrain 
@@ -92,20 +78,7 @@ fn get_terr_char(t: &Terrain) -> char {
     }
 }
 
-fn find_terr(maze_vec: Vec<Vec<Terrain>>, to_search: Terrain) -> (Vec<Vec<Terrain>>, (usize, usize)) {
-    let mut i = 0;
-    while i < maze_vec.len() {
-        let mut j = 0;
-        while j < maze_vec[i].len() {
-            if maze_vec[i][j] == to_search {
-                return (maze_vec, (i, j))
-            }
-            j += 1;
-        }
-        i += 1;
-    }
-    panic!("This character is not on the map");
-}
+
 //}}}
 //{{{ Direction
 #[derive(Clone, Copy, PartialEq)]
@@ -128,24 +101,12 @@ fn motion(d: &Direction) -> ([usize; 2], char) {
     }
 }
 //}}}
-//{{{ Sword
-//fn stab(d: Direction, maze: Vec<Vec<Terrain>>) -> Vec<Vec<Terrain>> {
-//    let thes_loc = find_terr(maze.clone(), Terrain::Theseus).1;
-//    if move_character(Terrain::Theseus, d, maze.clone(), vec![Terrain::Open, Terrain::Minotaur]) == maze.clone() {
-//        if find_terr(maze.clone(), Terrain::Theseus)
-//
-//
-//
-//}
-//}}}
 //{{{ Movement
-fn move_character(t: Terrain, d: Direction, maze_vec: Vec<Vec<Terrain>>, legal_terrains: Vec<Terrain>) -> Vec<Vec<Terrain>> {
+fn move_character(d: Direction, maze: &mut Vec<Vec<Terrain>>, mut character: &mut Character) -> Vec<Vec<Terrain>> {
     let location = motion(&d);
-    let value = find_terr(maze_vec, t);
-    let mut maze_vec = value.0;
     let points = [(location.0)[0], (location.0)[1]];
-    let x = (value.1).0;
-    let y = (value.1).1;
+    let x = character.loc.0;
+    let y = character.loc.1;
     //println!("In Move_char");
         
         if (x.checked_sub(points[0]) != None && y.checked_sub(points[1]) != None) || location.1 == '+' {
@@ -172,19 +133,36 @@ fn move_character(t: Terrain, d: Direction, maze_vec: Vec<Vec<Terrain>>, legal_t
             //println!("loc  = {:?}", (x, y));
             println!("{}[2J", 27 as char);
 
-            if destination[0] < maze_vec.len() &&
-                destination[1] < maze_vec[0].len() &&
-                legal_terrains.clone().contains(&maze_vec[destination[0]][destination[1]])
+            if destination[0] < maze.len() &&
+                destination[1] < maze[0].len() &&
+                character.legal_terrain.clone().contains(&maze[destination[0]][destination[1]])
                 {
-                    let swap = maze_vec[destination[0]][destination[1]];
-                    maze_vec[destination[0]][destination[1]] = t;
-                    maze_vec[x][y] = swap;
+                    let swap = maze[destination[0]][destination[1]];
+                    maze[destination[0]][destination[1]] = character.terr;
+                    maze[x][y] = swap;
+                    character.loc = (destination[0], destination[1]);
         }
     }
-    return maze_vec
+    return maze.to_owned()
 }
 //}}}
 //{{{ Input
+
+fn find_terr(maze_vec: Vec<Vec<Terrain>>, to_search: Terrain) -> (usize, usize) {
+    let mut i = 0;
+    while i < maze_vec.len() {
+        let mut j = 0;
+        while j < maze_vec[i].len() {
+            if maze_vec[i][j] == to_search {
+                return (i, j)
+            }
+            j += 1;
+        }
+        i += 1;
+    }
+    panic!("This character is not on the map");
+}
+
 fn parse_string_maze(maze_raw: String) -> Vec<Vec<Terrain>> {
     let mut vec_maze: Vec<Vec<Terrain>> = vec![vec![]];
     let mut row = 0;
