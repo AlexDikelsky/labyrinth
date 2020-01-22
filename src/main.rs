@@ -19,12 +19,12 @@ fn main() {
     //Prepares the maze
     let mut found = false;
     let mut theseus = Character {
-        loc           : find_terr(current_maze.clone(), Terrain::Theseus),
+        loc           : find_terr(&current_maze, Terrain::Theseus).unwrap(),
         legal_terrain : vec![Terrain::Open],
         terr          : Terrain::Theseus,
         shape         : '$',
     };
-    
+
     //Run the maze
     while !found {
         let action = read_action();
@@ -40,11 +40,10 @@ fn main() {
             true  => stab(action.1, &mut current_maze, &theseus),
             false => move_character(action.1, &mut current_maze, &mut theseus),
         };
-        
         //This is the clear incantation
-        println!("{}[2J", 27 as char);
-
-        as_maze(get_around(theseus.loc.0, theseus.loc.1, current_maze.clone(), 2, 2));
+        //println!("{}[2J", 27 as char);
+        as_maze(get_around(theseus.loc.0, theseus.loc.1, &current_maze, 4, 4));
+        current_maze = clear_terr(&mut current_maze, Terrain::Theseus, Terrain::Open);
     }
 }
 //}}}
@@ -142,6 +141,19 @@ fn stab(d: Direction, maze: &mut Vec<Vec<Terrain>>, character: &Character) -> Ve
         }
     }
 }
+fn clear_terr<T>(two_d_vec: &mut Vec<Vec<T>>, item_to_remove: T, item_to_swap_to: T) -> Vec<Vec<T>> 
+    where T: PartialEq + Clone + Copy
+{
+    for i in 0..two_d_vec.len() {
+        for j in 0..two_d_vec[i].len() {
+            if two_d_vec[i][j] == item_to_remove {
+                //println!("{}, {}", i, j);
+                two_d_vec[i][j] = item_to_swap_to.clone();
+            }
+        }
+    }
+    two_d_vec.to_owned()
+}
     /*  This code doesn't work because it allows you to stab 'over' terrain {{{
      * match d {
         Direction::Up    => fill(
@@ -223,19 +235,19 @@ fn move_character(d: Direction, maze: &mut Vec<Vec<Terrain>>, mut character: &mu
 //}}}
 //{{{ Input
 
-fn find_terr(maze_vec: Vec<Vec<Terrain>>, to_search: Terrain) -> (usize, usize) {
+fn find_terr(maze_vec: &Vec<Vec<Terrain>>, to_search: Terrain) -> Option<(usize, usize)> {
     let mut i = 0;
     while i < maze_vec.len() {
         let mut j = 0;
         while j < maze_vec[i].len() {
             if maze_vec[i][j] == to_search {
-                return (i, j)
+                return Some((i, j))
             }
             j += 1;
         }
         i += 1;
     }
-    panic!("This character is not on the map");
+    None
 }
 
 fn parse_string_maze(maze_raw: String) -> Vec<Vec<Terrain>> {
@@ -280,7 +292,7 @@ fn read_action() -> (bool, Direction) {
 }
 //}}}
 //{{{Output
-fn get_around(x_location: usize, y_location: usize, terr_maze: Vec<Vec<Terrain>>, x_sight: usize, y_sight: usize) -> Vec<Vec<Terrain>> {
+fn get_around(x_location: usize, y_location: usize, terr_maze: &Vec<Vec<Terrain>>, x_sight: usize, y_sight: usize) -> Vec<Vec<Terrain>> {
     let mut result = vec![vec![Terrain::Wall; y_sight * 2 + 1]; x_sight * 2 + 1];
 
     //println!("{} = x_l, {} = y_l, {} = x_si, {} = y_si", x_location, y_location, x_sight, y_sight);
