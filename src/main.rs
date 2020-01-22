@@ -2,15 +2,9 @@ extern crate termion;
 
 use std::io;
 use std::fs;
-//{{{Notes
-//  Can't use constant x_sights because when you enter the center of the
-//  maze, your vision increases.
-
-//const WALL_CHAR: char = 'X';
-//const OPEN_CHAR: char = '.';
-//}}}
 
 const STEP_LEN: usize = 1;
+const SWORD_LEN: usize = 2;
 
 //{{{Main
 fn main() {
@@ -43,13 +37,18 @@ fn main() {
         });
 
         let mut current_maze = match action.0 {
-            true  => move_character(action.1, &mut current_maze, &mut theseus),
+            true  => stab(action.1, &mut current_maze, &theseus),
             false => move_character(action.1, &mut current_maze, &mut theseus),
         };
+        
+        //This is the clear incantation
+        println!("{}[2J", 27 as char);
+
         as_maze(get_around(theseus.loc.0, theseus.loc.1, current_maze.clone(), 2, 2));
     }
 }
 //}}}
+//{{{ Structs & Enums
 //{{{Character
 struct Character {
     loc: (usize, usize),
@@ -77,8 +76,6 @@ fn get_terr_char(t: &Terrain) -> char {
         Terrain::Sword => '%',
     }
 }
-
-
 //}}}
 //{{{ Direction
 #[derive(Clone, Copy, PartialEq)]
@@ -101,14 +98,92 @@ fn motion(d: &Direction) -> ([usize; 2], char) {
     }
 }
 //}}}
+//}}}
+//{{{Map-changing functions
+//{{{ Sword
+fn stab(d: Direction, maze: &mut Vec<Vec<Terrain>>, character: &Character) -> Vec<Vec<Terrain>>{
+    //Starts at 1 because don't replace yourself
+    let mut i = 1;
+    let legal_terrain: Vec<Terrain> = vec![Terrain::Open, Terrain::Minotaur];
+
+    match d {
+        Direction::Up    => { 
+            while (character.loc.0).checked_sub(i) != None && 
+            i < SWORD_LEN + 1 &&
+            legal_terrain.contains(&maze[character.loc.0 - i][character.loc.1]) {
+                maze[character.loc.0 - i][character.loc.1] = Terrain::Sword;
+                i += 1;
+            }
+            maze.to_owned()
+        }
+        Direction::Left  => {
+            while (character.loc.1).checked_sub(i) != None && i < SWORD_LEN + 1 &&
+                legal_terrain.contains(&maze[character.loc.0][character.loc.1 - i]) {
+                maze[character.loc.0][character.loc.1 - i] = Terrain::Sword;
+                i += 1;
+            }
+            maze.to_owned()
+        }
+        Direction::Down  => {
+            while character.loc.0 + i < maze[0].len() && i < SWORD_LEN + 1 &&
+                legal_terrain.contains(&maze[character.loc.0 + i][character.loc.1]) {
+                maze[character.loc.0 + i][character.loc.1] = Terrain::Sword;
+                i += 1;
+            }
+            maze.to_owned()
+        }
+        Direction::Right => {
+            while character.loc.1 + i < maze.len() && i < SWORD_LEN + 1 &&
+                legal_terrain.contains(&maze[character.loc.0][character.loc.1 + i]) {
+                maze[character.loc.0][character.loc.1 + i] = Terrain::Sword;
+                i += 1;
+            }
+            maze.to_owned()
+        }
+    }
+}
+    /*  This code doesn't work because it allows you to stab 'over' terrain {{{
+     * match d {
+        Direction::Up    => fill(
+            vec![
+                (Some(&character.loc.0), &character.loc.1.checked_sub(1)),
+                (Some(&character.loc.0), &character.loc.1.checked_sub(2)),
+            ],
+            Terrain::Sword
+        );
+        Direction::Right => fill(
+            vec![
+                (&character.loc.0 + 1, &character.loc.1),
+                (&character.loc.0 + 2, &character.loc.1),
+            ],
+            Terrain::Sword
+        );
+        Direction::Down  => fill(
+            vec![
+                (&character.loc.0, &character.loc.1 + 1),
+                (&character.loc.0, &character.loc.1 + 2),
+            ],
+            Terrain::Sword
+        );
+        Direction::Left  => fill
+            vec![
+                (&character.loc.0.checked_sub(1), Some(&character.loc.1)),
+                (&character.loc.0.checked_sub(2), Some(&character.loc.1)),
+            ],
+            Terrain::Sword
+        );
+    }
+    //}}}
+    */
+
+//}}}
 //{{{ Movement
 fn move_character(d: Direction, maze: &mut Vec<Vec<Terrain>>, mut character: &mut Character) -> Vec<Vec<Terrain>> {
     let location = motion(&d);
     let points = [(location.0)[0], (location.0)[1]];
     let x = character.loc.0;
     let y = character.loc.1;
-    //println!("In Move_char");
-        
+
         if (x.checked_sub(points[0]) != None && y.checked_sub(points[1]) != None) || location.1 == '+' {
             let destination = {
                     if location.1 == '-' {
@@ -131,7 +206,6 @@ fn move_character(d: Direction, maze: &mut Vec<Vec<Terrain>>, mut character: &mu
 
             //println!("dest = {:?}", destination);
             //println!("loc  = {:?}", (x, y));
-            println!("{}[2J", 27 as char);
 
             if destination[0] < maze.len() &&
                 destination[1] < maze[0].len() &&
@@ -145,6 +219,7 @@ fn move_character(d: Direction, maze: &mut Vec<Vec<Terrain>>, mut character: &mu
     }
     return maze.to_owned()
 }
+//}}}
 //}}}
 //{{{ Input
 
