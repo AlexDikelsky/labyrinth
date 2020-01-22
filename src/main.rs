@@ -27,6 +27,7 @@ fn main() {
 
     //Run the maze
     while !found {
+        current_maze = clear_terr(&mut current_maze, Terrain::Sword, Terrain::Open);
         let action = read_action();
 
         println!("direction = {:?}", match action.1 { 
@@ -43,7 +44,6 @@ fn main() {
         //This is the clear incantation
         //println!("{}[2J", 27 as char);
         as_maze(get_around(theseus.loc.0, theseus.loc.1, &current_maze, 4, 4));
-        current_maze = clear_terr(&mut current_maze, Terrain::Theseus, Terrain::Open);
     }
 }
 //}}}
