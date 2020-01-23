@@ -9,7 +9,7 @@ const SWORD_LEN: usize = 2;
 //{{{Main
 fn main() {
     //This reads in the maze file
-    let filename = "testmaze.txt";
+    let filename = "min_test.txt";
 
     let maze_raw = fs::read_to_string(filename)
         .expect("unable to read file");
@@ -37,14 +37,24 @@ fn main() {
     //Run the maze
     let mut turn = 0;
     while !found {
-        current_maze = clear_terr(&mut current_maze, Terrain::Sword, Terrain::Open);
+        turn += 1;
         //The turn % n thing is here so the minotaur doesn't go too fast
 
-        turn += 1;
         current_maze = match (closer_than_n(&minotaur, &theseus, 4) && (turn % 5 != 0)) && !min_slain {
-            true => move_character(best_direction(&minotaur, &theseus), &mut current_maze, &mut minotaur),
+            true => {
+                let m = move_character(best_direction(&minotaur, &theseus), &mut current_maze, &mut minotaur);
+                match m {
+                    Some(t) => t,
+                    None    => go_in_valid_direction(&mut current_maze, &mut minotaur),
+                }
+            },
             false => current_maze,
         };
+
+        println!("Before Movement ↓");
+        as_maze(get_around(theseus.loc.0, theseus.loc.1, &current_maze, 4, 4));
+
+        current_maze = clear_terr(&mut current_maze, Terrain::Sword, Terrain::Open);
 
         if closer_than_n(&theseus, &minotaur, 1) {
             println!("You were eaten by the Minotaur");
@@ -55,21 +65,38 @@ fn main() {
 
         let mut current_maze = match action.0 {
             true  => stab(action.1, &mut current_maze, &theseus),
-            false => move_character(action.1, &mut current_maze, &mut theseus),
+            false => {
+                let m = move_character(action.1, &mut current_maze, &mut theseus);
+                match m {
+                    Some(t) => t,
+                    None => current_maze.clone(),
+                }
+            }
         };
+
+
+        as_maze(get_around(theseus.loc.0, theseus.loc.1, &current_maze, 4, 4));
         
         //println!("Best direction: {:?}", best_direction(&theseus, &minotaur));
         //This is the clear incantation
         //println!("{}[2J", 27 as char);
 
-        as_maze(get_around(theseus.loc.0, theseus.loc.1, &current_maze, 4, 4));
+        //as_maze(get_around(theseus.loc.0, theseus.loc.1, &current_maze, 4, 4));
+        //  I thing this print is too late because it makes the min seem further
+        //  away than it really is
+        //println!("After movement: up");
+
         if find_terr(&current_maze, Terrain::Minotaur) == None && !min_slain {
             println!("You have slain the minotaur!");
             println!("Now return to the entrance you came from");
+            //Changing the loc to be off the board is probably not the best way to solve this
+            //problem
+            minotaur.loc = (usize::max_value(), usize::max_value());
             min_slain = true;
         }
         if theseus.loc == start_point && min_slain {
             println!("You win!");
+            break;
         }
     }
 }
@@ -217,7 +244,7 @@ fn clear_terr<T>(two_d_vec: &mut Vec<Vec<T>>, item_to_remove: T, item_to_swap_to
 
 //}}}
 //{{{ Movement
-fn move_character(d: Direction, maze: &mut Vec<Vec<Terrain>>, mut character: &mut Character) -> Vec<Vec<Terrain>> {
+fn move_character(d: Direction, maze: &mut Vec<Vec<Terrain>>, mut character: &mut Character) -> Option<Vec<Vec<Terrain>>> {
     let location = motion(&d);
     let points = [(location.0)[0], (location.0)[1]];
     let x = character.loc.0;
@@ -232,6 +259,7 @@ fn move_character(d: Direction, maze: &mut Vec<Vec<Terrain>>, mut character: &mu
                     }
             };
 
+            //{{{
             //println!("{}, {}, {}, {}, {}", 
             //         x + points[0] > 0 ,
             //         x + points[0] < maze_vec.len() ,
@@ -245,18 +273,20 @@ fn move_character(d: Direction, maze: &mut Vec<Vec<Terrain>>, mut character: &mu
 
             //println!("dest = {:?}", destination);
             //println!("loc  = {:?}", (x, y));
+            //}}}
 
-            if destination[0] < maze.len() &&
-                destination[1] < maze[0].len() &&
-                character.legal_terrain.clone().contains(&maze[destination[0]][destination[1]])
-                {
-                    let swap = maze[destination[0]][destination[1]];
-                    maze[destination[0]][destination[1]] = character.terr;
-                    maze[x][y] = swap;
-                    character.loc = (destination[0], destination[1]);
+        if destination[0] < maze.len() &&
+            destination[1] < maze[0].len() &&
+            character.legal_terrain.clone().contains(&maze[destination[0]][destination[1]])
+            {
+                let swap = maze[destination[0]][destination[1]];
+                maze[destination[0]][destination[1]] = character.terr;
+                maze[x][y] = swap;
+                character.loc = (destination[0], destination[1]);
+                return Some(maze.to_owned());
         }
     }
-    return maze.to_owned()
+    None
 }
 //}}}
 //{{{ Minotaur
@@ -387,7 +417,7 @@ fn as_maze(maze: Vec<Vec<Terrain>>) -> Vec<Vec<Terrain>> {
 
     for x in readable.iter() {
         for y in x.iter() {
-            print!("{}", get_terr_char(y));
+            print!("{} ", get_terr_char(y));
         }
         println!();
     }
@@ -395,3 +425,17 @@ fn as_maze(maze: Vec<Vec<Terrain>>) -> Vec<Vec<Terrain>> {
     return maze
 }
 //}}}
+
+
+fn go_in_valid_direction(mut current_maze: &mut Vec<Vec<Terrain>>, mut character: &mut Character) -> Vec<Vec<Terrain>> {
+    for d in [Direction::Up, Direction::Right, Direction::Down, Direction::Left].iter() {
+        let test_maze = move_character(*d, &mut current_maze, &mut character);
+        if test_maze == None {
+            continue
+        } else {
+            return test_maze.unwrap().to_owned()
+        }
+    }
+    return current_maze.to_owned()
+}
+    
