@@ -9,7 +9,7 @@ const SWORD_LEN: usize = 2;
 //{{{Main
 fn main() {
     //This reads in the maze file
-    let filename = "testmaze.txt";
+    let filename = "min_test.txt";
 
     let maze_raw = fs::read_to_string(filename)
         .expect("unable to read file");
@@ -18,16 +18,38 @@ fn main() {
 
     //Prepares the maze
     let mut found = false;
+    let mut told = false;
     let mut theseus = Character {
         loc           : find_terr(&current_maze, Terrain::Theseus).unwrap(),
         legal_terrain : vec![Terrain::Open],
         terr          : Terrain::Theseus,
         shape         : '$',
     };
+    let mut minotaur = Character {
+        loc           : find_terr(&current_maze, Terrain::Minotaur).unwrap(),
+        legal_terrain : vec![Terrain::Open, Terrain::Theseus],
+        terr          : Terrain::Minotaur,
+        shape         : '?',
+    };
+
 
     //Run the maze
+    let mut turn = 0;
     while !found {
         current_maze = clear_terr(&mut current_maze, Terrain::Sword, Terrain::Open);
+        //The turn % n thing is here so the minotaur doesn't go too fast
+
+        turn += 1;
+        current_maze = match (closer_than_n(&minotaur, &theseus, 3) && (turn % 5 != 0)) && !told {
+            true => move_character(best_direction(&minotaur, &theseus), &mut current_maze, &mut minotaur),
+            false => current_maze,
+        };
+
+        if closer_than_n(&theseus, &minotaur, 1) {
+            println!("You were eaten by the Minotaur");
+            break;
+        }
+
         let action = read_action();
 
         println!("direction = {:?}", match action.1 { 
@@ -41,9 +63,17 @@ fn main() {
             true  => stab(action.1, &mut current_maze, &theseus),
             false => move_character(action.1, &mut current_maze, &mut theseus),
         };
+        
+        println!("Best direction: {:?}", best_direction(&theseus, &minotaur));
         //This is the clear incantation
         //println!("{}[2J", 27 as char);
+
         as_maze(get_around(theseus.loc.0, theseus.loc.1, &current_maze, 4, 4));
+        if find_terr(&current_maze, Terrain::Minotaur) == None && !told {
+            println!("You have slain the minotaur!");
+            println!("Now return to the entrance you came from");
+            told = true;
+        }
     }
 }
 //}}}
@@ -77,7 +107,7 @@ fn get_terr_char(t: &Terrain) -> char {
 }
 //}}}
 //{{{ Direction
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 enum Direction {
     Up,
     Right,
@@ -230,6 +260,38 @@ fn move_character(d: Direction, maze: &mut Vec<Vec<Terrain>>, mut character: &mu
         }
     }
     return maze.to_owned()
+}
+//}}}
+//{{{ Minotaur
+fn closer_than_n(this: &Character, other: &Character, n: usize) -> bool {
+    if ((this.loc.0 as isize) - (other.loc.0 as isize)).abs() < (n as isize) &&
+            ((this.loc.1 as isize) - (other.loc.1 as isize)).abs() < (n as isize) {
+        return true
+    }
+    return false
+}
+
+
+fn best_direction(this: &Character, other: &Character) -> Direction {
+    let left_right: isize = (this.loc.1 as isize) - (other.loc.1 as isize);
+    let up_down: isize = (this.loc.0 as isize) - (other.loc.0 as isize);
+    let mut result = Direction::Left;
+    println!("x dist = {}, y dist = {}", left_right, up_down);
+
+    if left_right.abs() > up_down.abs() {
+        if left_right < 0 {
+            result = Direction::Right;
+        } else {
+            result = Direction::Left;
+        }
+    } else {
+        if up_down < 0 {
+            result = Direction::Down;
+        } else {
+            result = Direction::Up;
+        }
+    }
+    return result
 }
 //}}}
 //}}}
