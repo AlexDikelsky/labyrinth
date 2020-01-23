@@ -11,7 +11,7 @@ const SWORD_LEN: usize = 2;
 //{{{Main
 fn main() {
     //This reads in the maze file
-    let filename = "cage.txt";
+    let filename = "min_test.txt";
 
     let maze_raw = fs::read_to_string(filename)
         .expect("unable to read file");
