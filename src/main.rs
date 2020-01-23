@@ -9,7 +9,7 @@ const SWORD_LEN: usize = 2;
 //{{{Main
 fn main() {
     //This reads in the maze file
-    let filename = "min_test.txt";
+    let filename = "testmaze.txt";
 
     let maze_raw = fs::read_to_string(filename)
         .expect("unable to read file");
@@ -18,13 +18,14 @@ fn main() {
 
     //Prepares the maze
     let mut found = false;
-    let mut told = false;
+    let mut min_slain = false;
     let mut theseus = Character {
         loc           : find_terr(&current_maze, Terrain::Theseus).unwrap(),
         legal_terrain : vec![Terrain::Open],
         terr          : Terrain::Theseus,
         shape         : '$',
     };
+    let start_point = find_terr(&current_maze, Terrain::Theseus).unwrap();
     let mut minotaur = Character {
         loc           : find_terr(&current_maze, Terrain::Minotaur).unwrap(),
         legal_terrain : vec![Terrain::Open, Terrain::Theseus],
@@ -40,7 +41,7 @@ fn main() {
         //The turn % n thing is here so the minotaur doesn't go too fast
 
         turn += 1;
-        current_maze = match (closer_than_n(&minotaur, &theseus, 3) && (turn % 5 != 0)) && !told {
+        current_maze = match (closer_than_n(&minotaur, &theseus, 4) && (turn % 5 != 0)) && !min_slain {
             true => move_character(best_direction(&minotaur, &theseus), &mut current_maze, &mut minotaur),
             false => current_maze,
         };
@@ -52,27 +53,23 @@ fn main() {
 
         let action = read_action();
 
-        println!("direction = {:?}", match action.1 { 
-            Direction::Up => "Up", 
-            Direction::Down => "Down", 
-            Direction::Right => "Right",
-            Direction::Left => "Left",
-        });
-
         let mut current_maze = match action.0 {
             true  => stab(action.1, &mut current_maze, &theseus),
             false => move_character(action.1, &mut current_maze, &mut theseus),
         };
         
-        println!("Best direction: {:?}", best_direction(&theseus, &minotaur));
+        //println!("Best direction: {:?}", best_direction(&theseus, &minotaur));
         //This is the clear incantation
         //println!("{}[2J", 27 as char);
 
         as_maze(get_around(theseus.loc.0, theseus.loc.1, &current_maze, 4, 4));
-        if find_terr(&current_maze, Terrain::Minotaur) == None && !told {
+        if find_terr(&current_maze, Terrain::Minotaur) == None && !min_slain {
             println!("You have slain the minotaur!");
             println!("Now return to the entrance you came from");
-            told = true;
+            min_slain = true;
+        }
+        if theseus.loc == start_point && min_slain {
+            println!("You win!");
         }
     }
 }
