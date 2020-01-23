@@ -1,5 +1,7 @@
 extern crate termion;
 
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 use std::io;
 use std::fs;
 
@@ -9,7 +11,7 @@ const SWORD_LEN: usize = 2;
 //{{{Main
 fn main() {
     //This reads in the maze file
-    let filename = "min_test.txt";
+    let filename = "cage.txt";
 
     let maze_raw = fs::read_to_string(filename)
         .expect("unable to read file");
@@ -298,6 +300,21 @@ fn closer_than_n(this: &Character, other: &Character, n: usize) -> bool {
     return false
 }
 
+//This function tries all 4 directions to see if 
+fn go_in_valid_direction(mut current_maze: &mut Vec<Vec<Terrain>>, mut character: &mut Character) -> Vec<Vec<Terrain>> {
+    let mut rng = thread_rng();
+    let mut list = [Direction::Up, Direction::Right, Direction::Down, Direction::Left];
+    list.shuffle(&mut rng);
+    for d in list.iter() {
+        let test_maze = move_character(*d, &mut current_maze, &mut character);
+        if test_maze == None {
+            continue
+        } else {
+            return test_maze.unwrap().to_owned()
+        }
+    }
+    return current_maze.to_owned()
+}
 
 fn best_direction(this: &Character, other: &Character) -> Direction {
     let left_right: isize = (this.loc.1 as isize) - (other.loc.1 as isize);
@@ -425,17 +442,3 @@ fn as_maze(maze: Vec<Vec<Terrain>>) -> Vec<Vec<Terrain>> {
     return maze
 }
 //}}}
-
-
-fn go_in_valid_direction(mut current_maze: &mut Vec<Vec<Terrain>>, mut character: &mut Character) -> Vec<Vec<Terrain>> {
-    for d in [Direction::Up, Direction::Right, Direction::Down, Direction::Left].iter() {
-        let test_maze = move_character(*d, &mut current_maze, &mut character);
-        if test_maze == None {
-            continue
-        } else {
-            return test_maze.unwrap().to_owned()
-        }
-    }
-    return current_maze.to_owned()
-}
-    
