@@ -17,8 +17,22 @@ fn main() {
 
     let args: Vec<String> = env::args().collect();
 
-    let maze_raw = fs::read_to_string(args[1].clone())
-        .expect("Type `cargo run <file>` to choose a maze");
+    let mut maze_raw = String::new();
+
+    let mut print_debug = false;
+    if args.len() > 1 {
+        maze_raw = fs::read_to_string(args[1].clone())
+            .expect("Type `cargo run <file>` to choose a maze");
+
+        if args.len() > 2 {
+            print_debug = true;
+        }
+    } else {
+        maze_raw = fs::read_to_string("testmaze.txt")
+            .expect("Please supply a maze filename");
+    }
+
+
 
     let mut current_maze = parse_string_maze(maze_raw);
 
@@ -57,7 +71,7 @@ fn main() {
             false => current_maze,
         };
 
-        //println!("Before Movement ↓");
+        if print_debug {println!("Before Movement ↓");}
         as_maze(get_around(theseus.loc.0, theseus.loc.1, &current_maze, 4, 4));
 
         current_maze = clear_terr(&mut current_maze, Terrain::Sword, Terrain::Open);
@@ -83,14 +97,14 @@ fn main() {
 
         //as_maze(get_around(theseus.loc.0, theseus.loc.1, &current_maze, 4, 4));
         
-        //println!("Best direction: {:?}", best_direction(&theseus, &minotaur));
+        if print_debug {println!("Best direction: {:?}", best_direction(&theseus, &minotaur));}
         //This is the clear incantation
-        //println!("{}[2J", 27 as char);
+        if !print_debug {println!("{}[2J", 27 as char);}
 
         //as_maze(get_around(theseus.loc.0, theseus.loc.1, &current_maze, 4, 4));
         //  I thing this print is too late because it makes the min seem further
         //  away than it really is
-        //println!("After movement: up");
+        if print_debug {println!("After movement: up");}
 
         if find_terr(&current_maze, Terrain::Minotaur) == None && !min_slain {
             println!("You have slain the minotaur!");
