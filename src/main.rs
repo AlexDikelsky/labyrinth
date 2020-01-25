@@ -1,9 +1,11 @@
 extern crate termion;
 
+use colored::*;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::io;
 use std::fs;
+use std::env;
 
 const STEP_LEN: usize = 1;
 const SWORD_LEN: usize = 2;
@@ -13,8 +15,10 @@ fn main() {
     //This reads in the maze file
     let filename = "min_test.txt";
 
-    let maze_raw = fs::read_to_string(filename)
-        .expect("unable to read file");
+    let args: Vec<String> = env::args().collect();
+
+    let maze_raw = fs::read_to_string(args[1].clone())
+        .expect("Type `cargo run <file>` to choose a maze");
 
     let mut current_maze = parse_string_maze(maze_raw);
 
@@ -53,7 +57,7 @@ fn main() {
             false => current_maze,
         };
 
-        println!("Before Movement ↓");
+        //println!("Before Movement ↓");
         as_maze(get_around(theseus.loc.0, theseus.loc.1, &current_maze, 4, 4));
 
         current_maze = clear_terr(&mut current_maze, Terrain::Sword, Terrain::Open);
@@ -77,7 +81,7 @@ fn main() {
         };
 
 
-        as_maze(get_around(theseus.loc.0, theseus.loc.1, &current_maze, 4, 4));
+        //as_maze(get_around(theseus.loc.0, theseus.loc.1, &current_maze, 4, 4));
         
         //println!("Best direction: {:?}", best_direction(&theseus, &minotaur));
         //This is the clear incantation
@@ -122,13 +126,13 @@ enum Terrain {
     Sword,
 }
 
-fn get_terr_char(t: &Terrain) -> char {
+fn get_terr_char(t: &Terrain) -> colored::ColoredString {
     match t {
-        Terrain::Wall => 'X',
-        Terrain::Open => '.',
-        Terrain::Theseus => '$',
-        Terrain::Minotaur => '?',
-        Terrain::Sword => '%',
+        Terrain::Wall => "X".bright_white(),
+        Terrain::Open => " ".white(),
+        Terrain::Theseus => "T".blue().bold(),
+        Terrain::Minotaur => "M".red().bold(),
+        Terrain::Sword => "%".yellow(),
     }
 }
 //}}}
@@ -320,7 +324,7 @@ fn best_direction(this: &Character, other: &Character) -> Direction {
     let left_right: isize = (this.loc.1 as isize) - (other.loc.1 as isize);
     let up_down: isize = (this.loc.0 as isize) - (other.loc.0 as isize);
     let mut result = Direction::Left;
-    println!("x dist = {}, y dist = {}", left_right, up_down);
+    //kprintln!("x dist = {}, y dist = {}", left_right, up_down
 
     if left_right.abs() > up_down.abs() {
         if left_right < 0 {
