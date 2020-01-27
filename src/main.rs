@@ -1,11 +1,14 @@
-extern crate termion;
-
 use colored::*;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::io;
 use std::fs;
 use std::env;
+
+//THese are for reading single characters from input
+use std::io::Read;
+use std::io::Write;
+use termios::{Termios, TCSANOW, ECHO, ICANON, tcsetattr};
 
 const STEP_LEN: usize = 1;
 const SWORD_LEN: usize = 2;
@@ -31,8 +34,6 @@ fn main() {
         maze_raw = fs::read_to_string("testmaze.txt")
             .expect("Please supply a maze filename");
     }
-
-
 
     let mut current_maze = parse_string_maze(maze_raw);
 
@@ -395,18 +396,47 @@ fn parse_string_maze(maze_raw: String) -> Vec<Vec<Terrain>> {
     vec_maze.pop(); //This removes the empty list at the end
     return vec_maze
 }
+
+
+fn read_char_no_ret() -> char {
+    //From stack overflow post here
+    //https://stackoverflow.com/questions/26321592/how-can-i-read-one-character-from-stdin-without-having-to-hit-enter
+
+    let stdin = 0;
+    let termios = Termios::from_fd(stdin).unwrap();
+    let mut new_termios = termios.clone();  // make a mutable copy of termios 
+                                            // that we will modify
+    new_termios.c_lflag &= !(ICANON | ECHO); // no echo and canonical mode
+    tcsetattr(stdin, TCSANOW, &mut new_termios).unwrap();
+    let stdout = io::stdout();
+    let mut reader = io::stdin();
+    let mut buffer = [0;1];  // read exactly one byte
+    stdout.lock().flush().unwrap();
+    reader.read_exact(&mut buffer).unwrap();
+
+    tcsetattr(stdin, TCSANOW, & termios).unwrap();  // reset the stdin to 
+                                                    // original termios data
+    buffer[0] as char
+}
+
 fn read_action() -> (bool, Direction) {
     loop {
-        let mut guess = String::new();
-        io::stdin().read_line(&mut guess)
-            .expect("Failed to read line");
+        let action = read_char_no_ret();
 
-        match guess.chars().next().unwrap() {
-            'u' => {return (false, Direction::Up)},
-            'd' => {return (false, Direction::Down)},
-            'l' => {return (false, Direction::Left)},
-            'r' => {return (false, Direction::Right)},
-            's' => {
+        match action {
+            //'u' => {return (false, Direction::Up)},
+            'w'=> {return (false, Direction::Up)},
+
+            //'d' => {return (false, Direction::Down)},
+            's' => {return (false, Direction::Down)},
+
+            //'l' => {return (false, Direction::Left)},
+            'a' => {return (false, Direction::Left)},
+
+            //'r' => {return (false, Direction::Right)},
+            'd' => {return (false, Direction::Right)},
+
+            'x' => {
                 println!("Choose a direction to attack:"); 
                 return (true, read_action().1)
                      }
@@ -459,4 +489,7 @@ fn as_maze(maze: Vec<Vec<Terrain>>) -> Vec<Vec<Terrain>> {
 
     return maze
 }
+
+
+
 //}}}
